@@ -17,10 +17,10 @@ remote:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
   prefix: ""
-  name: "italy_focus_test"
+  name: all
   scenarios:
-    enable: false
-    file: config/scenarios.yaml
+    enable: true
+    file: config/sector-coupled-test/scenarios_test_isolation.yaml
   disable_progressbar: false
   shared_resources:
     policy: false
@@ -952,7 +952,7 @@ clustering:
   mode: administrative
   administrative:
     level: 1
-    countries: {'IT': 2}
+    IT: 2
   focus_weights: false
   copperplate_regions: []
   build_bidding_zones:
