@@ -393,6 +393,39 @@ rule plot_summary:
     script:
         "../scripts/plot_summary.py"
 
+if config['plotting']['regional_plotting']:
+    rule plot_summary_regional:
+        params:
+            countries=config_provider("countries"),
+            planning_horizons=config_provider("scenario", "planning_horizons"),
+            emissions_scope=config_provider("energy", "emissions"),
+            plotting=config_provider("plotting"),
+            foresight=config_provider("foresight"),
+            co2_budget=config_provider("co2_budget"),
+            sector=config_provider("sector"),
+            RDIR=RDIR,
+        input:
+            nodal_costs=RESULTS + "csvs/nodal_costs.csv",
+            nodal_balances=RESULTS + "csvs/nodal_energy_balance.csv",
+            nodal_capacities=RESULTS + "csvs/nodal_capacities.csv",
+            nodal_capacity_factors=RESULTS + "csvs/nodal_capacity_factors.csv",
+            eurostat="data/eurostat/Balances-April2023",
+            co2="data/bundle/eea/UNFCCC_v23.csv",
+        output:
+            costs=RESULTS + "graphs/costs.svg",
+            balances=RESULTS + "graphs/balances-energy.svg",
+            capacities=RESULTS + "graphs/capacities.svg",
+            capacity_factors=RESULTS + "graphs/capacity_factors.svg",
+        threads: 2
+        resources:
+            mem_mb=10000,
+        log:
+            RESULTS + "logs/plot_summary_regional.log",
+        conda:
+            "../envs/environment.yaml"
+        script:
+            "../scripts/plot_summary_regional.py"
+
 
 rule plot_balance_timeseries:
     params:

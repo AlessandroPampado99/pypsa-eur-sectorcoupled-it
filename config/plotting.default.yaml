@@ -4,6 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#plotting
 plotting:
+  regional_plotting: true
   map:
     boundaries: [-11, 30, 34, 71]
     geomap_colors:
@@ -24,6 +25,9 @@ plotting:
   energy_max: 20000
   energy_min: -20000
   energy_threshold: 50.
+  capacities_threshold: 0.05
+  cf_threshold: 0.1
+  cf_agg: "mean" # options: mean, median, max, min
   balance_timeseries:
     max_threshold: 5 # GW
     mean_threshold: 1 # GW

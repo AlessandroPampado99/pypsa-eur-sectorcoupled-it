@@ -43,6 +43,14 @@ import yaml
 from pypsa.descriptors import get_activity_mask
 from pypsa.descriptors import get_switchable_as_dense as get_as_dense
 
+# Per fare debug su VSCode
+# Ensure repo root on sys.path
+import sys
+from pathlib import Path
+ROOT = Path(__file__).resolve().parents[1]  # points to /dati/pampado/pypsa-eur
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from scripts._benchmark import memory_logger
 from scripts._helpers import (
     PYPSA_V1,
@@ -1393,10 +1401,11 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "solve_sector_network",
             opts="",
-            clusters="5",
-            configfiles="config/test/config.overnight.yaml",
+            clusters="adm",
+            configfiles=["config/sector-coupled-test/config.yaml"],
             sector_opts="",
-            planning_horizons="2030",
+            planning_horizons="2050",
+            run="italy__nuts3_pp"
         )
     configure_logging(snakemake)
     set_scenario_config(snakemake)
@@ -1417,6 +1426,7 @@ if __name__ == "__main__":
         co2_sequestration_potential=snakemake.params["co2_sequestration_potential"],
         limit_max_growth=snakemake.params.get("sector", {}).get("limit_max_growth"),
     )
+
 
     logging_frequency = snakemake.config.get("solving", {}).get(
         "mem_logging_frequency", 30

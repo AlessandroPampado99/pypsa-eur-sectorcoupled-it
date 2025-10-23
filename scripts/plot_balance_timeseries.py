@@ -17,6 +17,12 @@ import pandas as pd
 import pypsa
 from tqdm import tqdm
 
+import sys
+from pathlib import Path
+ROOT = Path(__file__).resolve().parents[1]  # points to /dati/pampado/pypsa-eur
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from scripts._helpers import configure_logging, get_snapshots, set_scenario_config
 
 logger = logging.getLogger(__name__)
@@ -193,10 +199,12 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "plot_balance_timeseries",
             simpl="",
-            clusters="10",
+            clusters="adm",
             opts="",
             sector_opts="",
             planning_horizons=2050,
+            configfiles=["config/sector-coupled-test/config.yaml"],
+            run="italy__nuts3_pp",
         )
 
     configure_logging(snakemake)
