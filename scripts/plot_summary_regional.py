@@ -147,9 +147,13 @@ def plot_costs_regional(outdir, tech_colors, threshold_billion=0.5):
 
 def plot_capacities_regional(tech_colors, threshold_GW=0.5):
     """
-    Plot regional capacities aggregated by country and carrier (annual, not time-series).
-    Reads nodal_capacities.csv with index ['component','location','carrier'] and a 'value' column (MW).
-    Saves per-country bar charts into subfolders under dirname(snakemake.output.capacities).
+    Make 3 per-country capacity plots:
+      1) Generators
+      2) Stores + StorageUnits
+      3) Lines + Links
+    Input: nodal_capacities.csv with index ['component','location','carrier'] and 'value' in MW.
+    Saves per-country charts under dirname(snakemake.output.capacities).
+    Also writes a system-wide summary to snakemake.output.capacities (as before).
     """
     base_dir = os.path.dirname(snakemake.output.capacities)
 
@@ -161,102 +165,139 @@ def plot_capacities_regional(tech_colors, threshold_GW=0.5):
     # 2) add country
     df = add_country_level(df, level_name="location")
 
-    # 3) aggregate to [country, carrier] and convert to GW
-    df_tot = df.groupby(["country", "carrier"]).sum()
-    df_tot["value"] = df_tot["value"] / 1e3  # MW -> GW
+    # --- helper to aggregate, rename, threshold and plot per-country ---
+    def _make_group_plots(name, components, ylabel="Capacity [GW]"):
+        sub = df[df.index.get_level_values("component").isin(components)]
+        if sub.empty:
+            return
 
-    # 4) rename techs on 'carrier' level and re-aggregate
-    df_tot = df_tot.rename(index=rename_techs, level="carrier")
-    df_tot = df_tot.groupby(level=["country", "carrier"]).sum()
+        # aggregate to [country, carrier] and convert MW -> GW
+        tot = sub.groupby(["country", "carrier"]).sum()
+        tot["value"] = tot["value"] / 1e3
 
-    # 5) drop small techs (threshold per carrier across countries)
-    to_drop = df_tot.groupby(level="carrier")["value"].max()
-    to_drop = to_drop[to_drop < threshold_GW].index
-    if len(to_drop) > 0:
-        mask = df_tot.index.get_level_values("carrier").isin(to_drop)
-        df_tot = df_tot[~mask]
+        # rename techs on 'carrier' and re-aggregate
+        tot = tot.rename(index=rename_techs, level="carrier")
+        tot = tot.groupby(level=["country", "carrier"]).sum()
 
-    # 6) per-country plots
-    for country, df_c in df_tot.groupby(level="country"):
-        s = df_c.droplevel("country")["value"]
-        if s.empty:
-            continue
+        # drop small techs (threshold per carrier across countries)
+        to_drop = tot.groupby(level="carrier")["value"].max()
+        to_drop = to_drop[to_drop < threshold_GW].index
+        if len(to_drop) > 0:
+            mask = tot.index.get_level_values("carrier").isin(to_drop)
+            tot = tot[~mask]
 
-        # preferred order
-        new_index = preferred_order.intersection(s.index).append(
-            s.index.difference(preferred_order)
-        )
-        s = s.reindex(new_index)
+        # per-country plots
+        for country, df_c in tot.groupby(level="country"):
+            s = df_c.droplevel("country")["value"]
+            if s.empty:
+                continue
+            # preferred order
+            new_index = preferred_order.intersection(s.index).append(
+                s.index.difference(preferred_order)
+            )
+            s = s.reindex(new_index)
 
-        country_dir = os.path.join(base_dir, country)
-        os.makedirs(country_dir, exist_ok=True)
+            country_dir = os.path.join(base_dir, country)
+            os.makedirs(country_dir, exist_ok=True)
 
-        fig, ax = plt.subplots(figsize=(10, 6))
-        s.plot(kind="bar", ax=ax, color=[tech_colors.get(i, "grey") for i in s.index])
-        ax.set_ylabel("Capacity [GW]")
-        ax.set_xlabel("")
-        ax.grid(axis="x")
-        fig.savefig(os.path.join(country_dir, f"capacities_{country}.svg"), bbox_inches="tight")
-        plt.close(fig)
+            fig, ax = plt.subplots(figsize=(10, 6))
+            s.plot(kind="bar", ax=ax,
+                   color=[tech_colors.get(i, "grey") for i in s.index])
+            
+            ax.set_yscale("log")
+            ax.set_ylabel(ylabel)
+            ax.set_xlabel("")
+            ax.grid(axis="x")
+            # file name includes group tag
+            fname = f"capacities_{name}_{country}.svg"
+            fig.savefig(os.path.join(country_dir, fname), bbox_inches="tight")
+            plt.close(fig)
+
+        return tot  # return for optional system summary
+
+    # 3) build the three groups
+    sys_gen   = _make_group_plots("generators", {"Generator"})
+    sys_store = _make_group_plots("storage", {"Store", "StorageUnit"})
+    sys_grid  = _make_group_plots("network", {"Line", "Link"})
+
 
 def plot_capacity_factors_regional(tech_colors, threshold_pct=1.0, agg="mean"):
     """
-    Plot regional capacity factors aggregated by country and carrier (annual, not time-series).
-    Reads nodal_capacity_factors.csv with index ['component','location','carrier'] and 'value' in pu (0..1).
-    `agg` can be 'mean' or 'median'. Threshold is in percentage points (e.g., 1.0 => drop carriers <1% everywhere).
-    Saves per-country bar charts into subfolders under dirname(snakemake.output.capacity_factors).
+    Plot regional capacity factors aggregated by country and carrier, split in 3 sub-groups:
+      1) Generators
+      2) Stores + StorageUnits
+      3) Lines + Links
+    Input: nodal_capacity_factors.csv with index ['component','location','carrier'] and 'value' in p.u. (0..1)
+    Output: per-country SVGs under dirname(snakemake.output.capacity_factors)
     """
     base_dir = os.path.dirname(snakemake.output.capacity_factors)
 
-    # 1) load nodal CF (pu)
+    # 1) Load nodal CF (p.u.)
     df = load_nodal(
         snakemake.input.nodal_capacity_factors,
         index_names=["component", "location", "carrier"],
     )
-    # 2) add country
+    # 2) Add country level
     df = add_country_level(df, level_name="location")
 
-    # 3) aggregate to [country, carrier]: choose mean/median across components+locations
-    if agg == "median":
-        df_tot = df.groupby(["country", "carrier"]).median(numeric_only=True)
-    else:
-        df_tot = df.groupby(["country", "carrier"]).mean(numeric_only=True)
+    # --- helper to handle each component group ---
+    def _make_cf_group(name, components, ylabel="Capacity factor [%]"):
+        sub = df[df.index.get_level_values("component").isin(components)]
+        if sub.empty:
+            return
 
-    # 4) to %
-    df_tot["value"] = df_tot["value"] * 100.0
+        # aggregate to [country, carrier]
+        if agg == "median":
+            tot = sub.groupby(["country", "carrier"]).median(numeric_only=True)
+        else:
+            tot = sub.groupby(["country", "carrier"]).mean(numeric_only=True)
 
-    # 5) rename techs and re-aggregate
-    df_tot = df_tot.rename(index=rename_techs, level="carrier")
-    df_tot = df_tot.groupby(level=["country", "carrier"]).mean(numeric_only=True)
+        # convert to percentage
+        tot["value"] = tot["value"] * 100.0
 
-    # 6) drop tiny CF (e.g. carriers with < threshold_pct everywhere)
-    to_drop = df_tot.groupby(level="carrier")["value"].max()
-    to_drop = to_drop[to_drop < threshold_pct].index
-    if len(to_drop) > 0:
-        mask = df_tot.index.get_level_values("carrier").isin(to_drop)
-        df_tot = df_tot[~mask]
+        # rename and regroup
+        tot = tot.rename(index=rename_techs, level="carrier")
+        tot = tot.groupby(level=["country", "carrier"]).mean(numeric_only=True)
 
-    # 7) per-country plots
-    for country, df_c in df_tot.groupby(level="country"):
-        s = df_c.droplevel("country")["value"]
-        if s.empty:
-            continue
+        # filter small CFs
+        to_drop = tot.groupby(level="carrier")["value"].max()
+        to_drop = to_drop[to_drop < threshold_pct].index
+        if len(to_drop) > 0:
+            mask = tot.index.get_level_values("carrier").isin(to_drop)
+            tot = tot[~mask]
 
-        new_index = preferred_order.intersection(s.index).append(
-            s.index.difference(preferred_order)
-        )
-        s = s.reindex(new_index)
+        # per-country plots
+        for country, df_c in tot.groupby(level="country"):
+            s = df_c.droplevel("country")["value"]
+            if s.empty:
+                continue
 
-        country_dir = os.path.join(base_dir, country)
-        os.makedirs(country_dir, exist_ok=True)
+            # order carriers
+            new_index = preferred_order.intersection(s.index).append(
+                s.index.difference(preferred_order)
+            )
+            s = s.reindex(new_index)
 
-        fig, ax = plt.subplots(figsize=(10, 6))
-        s.plot(kind="bar", ax=ax, color=[tech_colors.get(i, "grey") for i in s.index])
-        ax.set_ylabel("Capacity factor [%]")
-        ax.set_xlabel("")
-        ax.grid(axis="x")
-        fig.savefig(os.path.join(country_dir, f"capacity_factors_{country}.svg"), bbox_inches="tight")
-        plt.close(fig)
+            # ensure subdir and plot
+            country_dir = os.path.join(base_dir, country)
+            os.makedirs(country_dir, exist_ok=True)
+
+            fig, ax = plt.subplots(figsize=(10, 6))
+            s.plot(kind="bar", ax=ax, color=[tech_colors.get(i, "grey") for i in s.index])
+
+            ax.set_ylabel(ylabel)
+            ax.set_xlabel("")
+            ax.grid(axis="x")
+
+            fname = f"capacity_factors_{name}_{country}.svg"
+            fig.savefig(os.path.join(country_dir, fname), bbox_inches="tight")
+            plt.close(fig)
+
+    # 3) Apply to the three groups
+    _make_cf_group("generators", {"Generator"})
+    _make_cf_group("storage", {"Store", "StorageUnit"})
+    _make_cf_group("network", {"Line", "Link"})
+
 
 
 def plot_balances_regional():
