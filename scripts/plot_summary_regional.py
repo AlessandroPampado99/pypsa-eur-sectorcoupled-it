@@ -102,7 +102,7 @@ def add_country_level(df: pd.DataFrame, level_name: str = "location") -> pd.Data
 
 
 def plot_costs_regional(outdir, tech_colors, threshold_billion=0.5):
-    base_dir = os.path.dirname(snakemake.output.costs)
+    base_dir = REGIONAL_BASE
 
     df = load_nodal(snakemake.input.nodal_costs,
                     index_names=["cost","component","location","carrier"])
@@ -155,7 +155,7 @@ def plot_capacities_regional(tech_colors, threshold_GW=0.5):
     Saves per-country charts under dirname(snakemake.output.capacities).
     Also writes a system-wide summary to snakemake.output.capacities (as before).
     """
-    base_dir = os.path.dirname(snakemake.output.capacities)
+    base_dir = REGIONAL_BASE
 
     # 1) load nodal capacities (MW)
     df = load_nodal(
@@ -230,7 +230,7 @@ def plot_capacity_factors_regional(tech_colors, threshold_pct=1.0, agg="mean"):
     Input: nodal_capacity_factors.csv with index ['component','location','carrier'] and 'value' in p.u. (0..1)
     Output: per-country SVGs under dirname(snakemake.output.capacity_factors)
     """
-    base_dir = os.path.dirname(snakemake.output.capacity_factors)
+    base_dir = REGIONAL_BASE
 
     # 1) Load nodal CF (p.u.)
     df = load_nodal(
@@ -307,7 +307,7 @@ def plot_balances_regional():
     """
     co2_carriers = ["co2", "co2 stored", "process emissions"]
 
-    base_dir = os.path.dirname(snakemake.output.balances)
+    base_dir = REGIONAL_BASE
 
     # 1) load nodal energy balance: index ['component','carrier','location','bus_carrier'] + 'value'
     df = load_nodal(
@@ -601,11 +601,13 @@ if __name__ == "__main__":
         from scripts._helpers import mock_snakemake
 
         snakemake = mock_snakemake("plot_summary_regional",
-                                   configfiles=["config/sector-coupled-test/config.yaml"],
+                                   configfiles=["config/sector-coupled-test/config_validation.yaml"],
                                    run="italy__nuts3_pp",)
 
     configure_logging(snakemake)
     set_scenario_config(snakemake)
+
+    REGIONAL_BASE = getattr(snakemake.output, "regional_dir", None)
 
     n_header = 3
 

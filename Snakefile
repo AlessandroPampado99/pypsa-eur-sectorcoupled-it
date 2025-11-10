@@ -81,6 +81,7 @@ if config["foresight"] == "perfect":
 
 rule all:
     input:
+        expand(RESULTS + "graphs/regional", run=config["run"]["name"]),
         expand(RESULTS + "graphs/costs.svg", run=config["run"]["name"]),
         expand(resources("maps/power-network.pdf"), run=config["run"]["name"]),
         expand(

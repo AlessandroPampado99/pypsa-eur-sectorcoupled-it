@@ -15,6 +15,12 @@ import numpy as np
 import pandas as pd
 from pandas import Timedelta as Delta
 
+import sys
+from pathlib import Path
+ROOT = Path(__file__).resolve().parents[1]  # points to /dati/pampado/pypsa-eur
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from scripts._helpers import configure_logging, get_snapshots, set_scenario_config
 
 logger = logging.getLogger(__name__)
@@ -232,7 +238,9 @@ if __name__ == "__main__":
     if "snakemake" not in globals():
         from scripts._helpers import mock_snakemake
 
-        snakemake = mock_snakemake("build_electricity_demand")
+        snakemake = mock_snakemake("build_electricity_demand",
+                                   configfiles=["config/sector-coupled-test/config_validation_2024.yaml"],
+                                   run="validation__europe_2024_nuts3",)
 
     configure_logging(snakemake)
     set_scenario_config(snakemake)
@@ -255,7 +263,7 @@ if __name__ == "__main__":
 
     load = load_timeseries(snakemake.input.reported, years, countries)
 
-    load = load.reindex(index=snapshots)
+    load.index = snapshots
 
     if "UA" in countries:
         # attach load of UA (best data only for entsoe transparency)
@@ -288,7 +296,14 @@ if __name__ == "__main__":
         synthetic_load = pd.read_csv(fn, index_col=0, parse_dates=True)
         # UA, MD, XK, CY, MT do not appear in synthetic load data
         countries = list(set(countries) - set(["UA", "MD", "XK", "CY", "MT"]))
-        synthetic_load = synthetic_load.loc[snapshots, countries]
+        synthetic_load = synthetic_load.loc[years, countries]
+        if len(synthetic_load) != len(snapshots):
+            raise ValueError(
+                f"Synthetic load length ({len(synthetic_load)}) does not match "
+                f"snapshots length ({len(snapshots)}). Check fixed_year or synthetic data source."
+            )
+        synthetic_load.index = snapshots
+            
         load = load.combine_first(synthetic_load)
 
     assert not load.isna().any().any(), (

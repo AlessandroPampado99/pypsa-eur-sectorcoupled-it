@@ -412,10 +412,7 @@ if config['plotting']['regional_plotting']:
             eurostat="data/eurostat/Balances-April2023",
             co2="data/bundle/eea/UNFCCC_v23.csv",
         output:
-            costs=RESULTS + "graphs/costs.svg",
-            balances=RESULTS + "graphs/balances-energy.svg",
-            capacities=RESULTS + "graphs/capacities.svg",
-            capacity_factors=RESULTS + "graphs/capacity_factors.svg",
+            regional_dir = directory(RESULTS + "graphs/regional"),
         threads: 2
         resources:
             mem_mb=10000,

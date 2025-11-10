@@ -30,6 +30,12 @@ import geopandas as gpd
 import pandas as pd
 from numpy.polynomial import Polynomial
 
+import sys
+from pathlib import Path
+ROOT = Path(__file__).resolve().parents[1]  # points to /dati/pampado/pypsa-eur
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from scripts._helpers import (
     configure_logging,
     get_snapshots,
@@ -147,7 +153,9 @@ if __name__ == "__main__":
     if "snakemake" not in globals():
         from scripts._helpers import mock_snakemake
 
-        snakemake = mock_snakemake("build_hydro_profile")
+        snakemake = mock_snakemake("build_hydro_profile",
+                                   configfiles=["config/sector-coupled-test/config_validation_2024.yaml"],
+                                   run="validation__europe_2024_nuts3",)
     configure_logging(snakemake)
     set_scenario_config(snakemake)
 
@@ -159,6 +167,7 @@ if __name__ == "__main__":
 
     years_in_time = pd.DatetimeIndex(time).year.unique()
     cutout_time = pd.DatetimeIndex(cutout.coords["time"].values)
+
 
     full_years_available = all(
         pd.Timestamp(f"{year}-01-01") in cutout_time
@@ -195,8 +204,9 @@ if __name__ == "__main__":
 
     norm_year = config_hydro.get("eia_norm_year")
     missing_years = years_in_time.difference(eia_stats.index)
+
     if norm_year:
-        eia_stats.loc[years_in_time] = eia_stats.loc[norm_year]
+        eia_stats.loc[years_in_time[0]] = eia_stats.loc[norm_year]
     elif missing_years.any():
         eia_stats.loc[missing_years] = eia_stats.median()
 

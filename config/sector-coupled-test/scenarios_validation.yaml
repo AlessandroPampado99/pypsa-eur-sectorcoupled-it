@@ -1,0 +1,131 @@
+# -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: Contributors to PyPSA-Eur <https://github.com/pypsa/pypsa-eur>
+#
+# SPDX-License-Identifier: MIT
+
+# This file is used to define the scenarios that are run by snakemake. Each entry on the first level is a scenario. Each scenario can contain configuration overrides with respect to the config/config.yaml settings.
+#
+# Example
+#
+# custom-scenario: # name of the scenario
+#   electricity:
+#       renewable_carriers: [wind, solar] # override the list of renewable carriers
+
+validation__europe_2024_nuts3:
+  countries:
+    - AL
+    - AT
+    - BA
+    - BE
+    - BG
+    - CH
+    - CZ
+    - DE
+    - DK
+    - EE
+    - ES
+    - FI
+    - FR
+    - GB
+    - GR
+    - HR
+    - HU
+    - IE
+    - IT
+    - LT
+    - LU
+    - LV
+    - ME
+    - MK
+    - NL
+    - 'NO'
+    - PL
+    - PT
+    - RO
+    - RS
+    - SE
+    - SI
+    - SK
+    - XK
+  clustering:
+    mode: administrative
+    administrative:
+      level: 1
+      IT: 3
+
+validation__europe_2024_nuts2:
+  countries:
+    - AL
+    - AT
+    - BA
+    - BE
+    - BG
+    - CH
+    - CZ
+    - DE
+    - DK
+    - EE
+    - ES
+    - FI
+    - FR
+    - GB
+    - GR
+    - HR
+    - HU
+    - IE
+    - IT
+    - LT
+    - LU
+    - LV
+    - ME
+    - MK
+    - NL
+    - 'NO'
+    - PL
+    - PT
+    - RO
+    - RS
+    - SE
+    - SI
+    - SK
+    - XK
+  clustering:
+    mode: administrative
+    administrative:
+      level: 1
+      IT: 2
+
+
+validation__italypp_2024_nuts3:
+  countries:
+    - IT
+    - FR
+    - CH
+    - AT
+    - GR
+    - AL
+    - HR
+    - SI
+    - ME
+  clustering:
+    mode: administrative
+    administrative:
+      level: 1
+      IT: 3
+
+validation__italypp_2024_nuts2:
+  countries:
+    - IT
+    - FR
+    - CH
+    - AT
+    - GR
+    - AL
+    - HR
+    - SI
+    - ME
+  clustering:
+    mode: administrative
+    administrative:
+      level: 1
+      IT: 2

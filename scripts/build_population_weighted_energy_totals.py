@@ -9,6 +9,12 @@ import logging
 
 import pandas as pd
 
+import sys
+from pathlib import Path
+ROOT = Path(__file__).resolve().parents[1]  # points to /dati/pampado/pypsa-eur
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from scripts._helpers import configure_logging, get_snapshots, set_scenario_config
 
 idx = pd.IndexSlice
@@ -22,20 +28,24 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "build_population_weighted_energy_totals",
             kind="heat",
-            clusters=60,
+            configfiles=["config/sector-coupled-test/config_validation_2024.yaml"],
+            run="validation__europe_2024_nuts3",
+            clusters='adm'
         )
     configure_logging(snakemake)
     set_scenario_config(snakemake)
 
     config = snakemake.config["energy"]
 
-    if snakemake.wildcards.kind == "heat":
-        snapshots = get_snapshots(
-            snakemake.params.snapshots, snakemake.params.drop_leap_day
-        )
-        data_years = snapshots.year.unique()
-    else:
-        data_years = int(config["energy_totals_year"])
+    # if snakemake.wildcards.kind == "heat":
+    #     snapshots = get_snapshots(
+    #         snakemake.params.snapshots, snakemake.params.drop_leap_day
+    #     )
+    #     data_years = snapshots.year.unique()
+    # else:
+    #     data_years = int(config["energy_totals_year"])
+
+    data_years = int(config["energy_totals_year"])
 
     pop_layout = pd.read_csv(snakemake.input.clustered_pop_layout, index_col=0)
 
