@@ -16,11 +16,11 @@ remote:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: ""
-  name: prova-everywhere
+  prefix: "first_simulation"
+  name: nze
   scenarios:
-    enable: false
-    file: config/sector-coupled-test/scenarios_test_isolation.yaml
+    enable: true
+    file: config/pypsa-it-sec/scenarios_first_simulation.yaml
   disable_progressbar: false
   shared_resources:
     policy: false
@@ -41,7 +41,7 @@ scenario:
   sector_opts:
   - ''
   planning_horizons:
-  - 2050
+  - 2040
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#countries
 countries:
@@ -127,15 +127,14 @@ electricity:
     H2: 168
 
   extendable_carriers:
-    Generator: [solar, solar-hsat, onwind, offwind-ac, offwind-dc, offwind-float, OCGT, CCGT, nuclear]
+    Generator: [solar, solar-hsat, onwind, offwind-ac, offwind-dc, offwind-float, OCGT, CCGT]
     StorageUnit: [] # battery, H2
     Store: [battery, H2]
     Link: [] # H2 pipeline
 
   powerplants_filter: (DateOut >= 2024 or DateOut != DateOut) and not (Country == 'Germany' and Fueltype == 'Nuclear')
   custom_powerplants: false
-  everywhere_powerplants:
-    nuclear: ['IT', 'FR']
+  everywhere_powerplants: []
 
   conventional_carriers: [nuclear, oil, OCGT, CCGT, coal, lignite, geothermal, biomass]
   renewable_carriers: [solar, solar-hsat, onwind, offwind-ac, offwind-dc, offwind-float, hydro]
@@ -952,8 +951,13 @@ costs:
 clustering:
   mode: administrative
   administrative:
-    level: 1
+    level: 0
     IT: 2
+    FR: 1
+    CH: 1
+    AT: 1
+    GR: 1
+    HR: 1
   focus_weights: false
   copperplate_regions: []
   build_bidding_zones:
@@ -993,7 +997,7 @@ adjustments:
 solving:
   options:
     clip_p_max_pu: 1.e-2
-    load_shedding: false
+    load_shedding: true
     curtailment_mode: false
     noisy_costs: true
     skip_iterations: true

@@ -17,10 +17,10 @@ remote:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
   prefix: ""
-  name: prova-everywhere
+  name: smspp_electricity_only_europe
   scenarios:
     enable: false
-    file: config/sector-coupled-test/scenarios_test_isolation.yaml
+    file: config/smspp_test/scenarios_test.yaml
   disable_progressbar: false
   shared_resources:
     policy: false
@@ -35,9 +35,16 @@ foresight: overnight
 # Wildcard docs in https://pypsa-eur.readthedocs.io/en/latest/wildcards.html
 scenario:
   clusters:
-  - 'adm'
+  - 40
+  - 50
+  - 60
+  - 70
+  - 80
+  - 90
+  - 100
+
   opts:
-  - ''
+  - '1h'
   sector_opts:
   - ''
   planning_horizons:
@@ -134,8 +141,7 @@ electricity:
 
   powerplants_filter: (DateOut >= 2024 or DateOut != DateOut) and not (Country == 'Germany' and Fueltype == 'Nuclear')
   custom_powerplants: false
-  everywhere_powerplants:
-    nuclear: ['IT', 'FR']
+  everywhere_powerplants: []
 
   conventional_carriers: [nuclear, oil, OCGT, CCGT, coal, lignite, geothermal, biomass]
   renewable_carriers: [solar, solar-hsat, onwind, offwind-ac, offwind-dc, offwind-float, hydro]
@@ -950,7 +956,7 @@ costs:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#clustering
 clustering:
-  mode: administrative
+  mode: busmap
   administrative:
     level: 1
     IT: 2
@@ -977,7 +983,7 @@ clustering:
       ramp_limit_down: max
   temporal:
     resolution_elec: false
-    resolution_sector: 3H
+    resolution_sector: false
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#adjustments
 adjustments:
@@ -993,7 +999,7 @@ adjustments:
 solving:
   options:
     clip_p_max_pu: 1.e-2
-    load_shedding: false
+    load_shedding: true
     curtailment_mode: false
     noisy_costs: true
     skip_iterations: true

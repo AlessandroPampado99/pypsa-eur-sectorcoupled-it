@@ -12,6 +12,14 @@ import pypsa
 from packaging.version import Version, parse
 from pypsa.plot import add_legend_lines, add_legend_patches, add_legend_semicircles
 from pypsa.statistics import get_transmission_carriers
+import logging
+
+# Ensure repo root on sys.path
+import sys
+from pathlib import Path
+ROOT = Path(__file__).resolve().parents[1]  # points to /dati/pampado/pypsa-eur
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from scripts._helpers import (
     PYPSA_V1,
@@ -22,6 +30,8 @@ from scripts._helpers import (
 from scripts.add_electricity import sanitize_carriers
 from scripts.plot_power_network import load_projection
 
+logger = logging.getLogger(__name__)
+
 SEMICIRCLE_CORRECTION_FACTOR = 2 if parse(pypsa.__version__) <= Version("0.33.2") else 1
 
 if __name__ == "__main__":
@@ -30,11 +40,13 @@ if __name__ == "__main__":
 
         snakemake = mock_snakemake(
             "plot_balance_map",
-            clusters="10",
+            clusters="adm",
             opts="",
             sector_opts="",
-            planning_horizons="2050",
-            carrier="H2",
+            planning_horizons="2040",
+            carrier="AC",
+            configfiles="config/pypsa-it-sec/config.yaml",
+            run="nze"
         )
 
     configure_logging(snakemake)
@@ -138,8 +150,15 @@ if __name__ == "__main__":
 
     # if only one price is available, use this price for all regions
     if price.size == 1:
-        regions["price"] = price.values[0]
-        shift = round(price.values[0] / 20, 0)
+        regions["price"] = abs(price.values[0])
+        if price.values[0] < 0:
+            logger.warning(
+                "Only one negative price available for all regions. "
+                "The colormap will not be representative."
+            ) 
+            shift = abs(round(price.values[0] / 20, 0))
+        else:
+            shift= round(price.values[0] / 20, 0)
     else:
         regions["price"] = price.reindex(regions.index).fillna(0)
         shift = 0

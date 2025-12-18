@@ -89,42 +89,111 @@ def add_custom_powerplants(ppl, custom_powerplants, custom_ppl_query=False):
 
 
 def add_everywhere_powerplants(ppl, substations, everywhere_powerplants):
-    # Create a dataframe with "everywhere_powerplants" of stated carriers at the location of all substations
-    everywhere_ppl = (
-        pd.DataFrame(
-            itertools.product(substations.index.values, everywhere_powerplants),
-            columns=["substation_index", "Fueltype"],
-        ).merge(
-            substations[["x", "y", "country"]],
-            left_on="substation_index",
-            right_index=True,
-        )
-    ).drop(columns="substation_index")
+    """
+    Extend the power plant list by adding zero-capacity 'everywhere powerplants'
+    for selected fuel types and countries.
 
-    # PPL uses different columns names compared to substations dataframe -> rename
+    Parameters
+    ----------
+    ppl : pd.DataFrame
+        Existing power plant database with at least columns:
+        ['DateIn', 'DateOut'].
+    substations : pd.DataFrame
+        Substations with index as bus IDs and columns ['x', 'y', 'country'].
+        The bus index is assumed to start with a country code, e.g. 'IT', 'FR'.
+    everywhere_powerplants : dict or list
+        - New format (recommended): dict mapping Fueltype -> list of country codes
+          e.g. {'nuclear': ['IT', 'FR'], 'gas': ['DE']}.
+        - Legacy format: list of Fueltype, meaning "all countries"
+          e.g. ['nuclear', 'gas'].
+
+    Returns
+    -------
+    pd.DataFrame
+        Concatenation of original `ppl` and the automatically added plants.
+    """
+
+    # If nothing is requested, just return the original dataframe
+    if not everywhere_powerplants:
+        return ppl
+
+    # Backwards compatibility: if a list/tuple is passed, interpret it as
+    # "add this fuel type in all countries / all substations"
+    if isinstance(everywhere_powerplants, (list, tuple, set)):
+        everywhere_powerplants = {ft: None for ft in everywhere_powerplants}
+    elif not isinstance(everywhere_powerplants, dict):
+        raise TypeError(
+            "everywhere_powerplants must be a dict mapping Fueltype -> list of "
+            "country codes, or a list of Fueltype for legacy behaviour."
+        )
+
+    frames = []
+
+    for fueltype, countries in everywhere_powerplants.items():
+        # Normalize countries: None or empty -> all substations
+        if not countries:
+            eligible_substations = substations.index
+        else:
+            # Allow a single string as well as list
+            if isinstance(countries, str):
+                countries = [countries]
+
+            # Filter substations whose index starts with any of the given prefixes
+            # e.g. 'IT', 'FR'
+            mask = substations.index.to_series().str.startswith(tuple(countries))
+            eligible_substations = substations.index[mask]
+
+        if len(eligible_substations) == 0:
+            # Nothing to add for this fueltype / country combination
+            continue
+
+        df_ft = (
+            pd.DataFrame(
+                itertools.product(eligible_substations, [fueltype]),
+                columns=["substation_index", "Fueltype"],
+            )
+            .merge(
+                substations[["x", "y", "country"]],
+                left_on="substation_index",
+                right_index=True,
+            )
+            .drop(columns="substation_index")
+        )
+
+        frames.append(df_ft)
+
+    # If no frame was created (e.g. all filters empty), just return ppl
+    if not frames:
+        return ppl
+
+    everywhere_ppl = pd.concat(frames, ignore_index=True)
+
+    # PPL uses different column names compared to substations dataframe -> rename
     everywhere_ppl = everywhere_ppl.rename(
         columns={"x": "lon", "y": "lat", "country": "Country"}
     )
 
     # Add default values for the powerplants
     everywhere_ppl["Name"] = (
-        "Automatically added everywhere-powerplant " + everywhere_ppl.Fueltype
+        "Automatically added everywhere-powerplant " + everywhere_ppl["Fueltype"]
     )
     everywhere_ppl["Set"] = "PP"
     everywhere_ppl["Technology"] = everywhere_ppl["Fueltype"]
     everywhere_ppl["Capacity"] = 0.0
 
-    # Assign plausible values for the commissioning and decommissioning years
+    # Assign plausible commissioning and decommissioning years
     # required for multi-year models
     everywhere_ppl["DateIn"] = ppl["DateIn"].min()
     everywhere_ppl["DateOut"] = ppl["DateOut"].max()
 
-    # NaN values for efficiency will be replaced by the generic efficiency by attach_conventional_generators(...) in add_electricity.py later
+    # NaN values for efficiency will be replaced by the generic efficiency
+    # by attach_conventional_generators(...) in add_electricity.py later
     everywhere_ppl["Efficiency"] = np.nan
 
     return pd.concat(
         [ppl, everywhere_ppl], sort=False, ignore_index=True, verify_integrity=True
     )
+
 
 
 def replace_natural_gas_technology(df):

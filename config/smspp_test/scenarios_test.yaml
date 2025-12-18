@@ -1,0 +1,30 @@
+# -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: Contributors to PyPSA-Eur <https://github.com/pypsa/pypsa-eur>
+#
+# SPDX-License-Identifier: MIT
+
+# This file is used to define the scenarios that are run by snakemake. Each entry on the first level is a scenario. Each scenario can contain configuration overrides with respect to the config/config.yaml settings.
+#
+# Example
+#
+# custom-scenario: # name of the scenario
+#   electricity:
+#       renewable_carriers: [wind, solar] # override the list of renewable carriers
+
+europe__nuts0_it3:
+  clustering:
+    mode: administrative
+    administrative:
+      level: 0
+      IT: 3
+
+europe__var_it3:
+  clustering:
+    mode: administrative
+    administrative:
+      level: 0
+      IT: 3
+      FR: 1
+      CH: 1
+      AT: 1
+      GR: 1
