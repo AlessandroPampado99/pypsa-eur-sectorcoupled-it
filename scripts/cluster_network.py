@@ -85,6 +85,13 @@ from scipy.sparse.csgraph import connected_components
 from shapely.algorithms.polylabel import polylabel
 from shapely.geometry import MultiPolygon, Polygon
 
+# Ensure repo root on sys.path
+import sys
+from pathlib import Path
+ROOT = Path(__file__).resolve().parents[1]  # points to /dati/pampado/pypsa-eur
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from scripts._helpers import configure_logging, set_scenario_config
 
 PD_GE_2_2 = parse(pd.__version__) >= Version("2.2")

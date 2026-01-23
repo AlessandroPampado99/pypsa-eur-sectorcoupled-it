@@ -1,0 +1,138 @@
+# -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: Contributors to PyPSA-Eur <https://github.com/pypsa/pypsa-eur>
+#
+# SPDX-License-Identifier: MIT
+
+# This file is used to define the scenarios that are run by snakemake. Each entry on the first level is a scenario. Each scenario can contain configuration overrides with respect to the config/config.yaml settings.
+#
+# Example
+#
+# custom-scenario: # name of the scenario
+#   electricity:
+#       renewable_carriers: [wind, solar] # override the list of renewable carriers
+
+emissions_2040:
+  co2_budget:
+    2020: 0.720 # average emissions of 2019 to 2021 relative to 1990, CO2 excl LULUCF, EEA data, European Environment Agency. (2023a). Annual European Union greenhouse gas inventory 1990–2021 and inventory report 2023 - CRF Table. https://unfccc.int/documents/627830
+    2025: 0.648 # With additional measures (WAM) projection, CO2 excl LULUCF, European Environment Agency. (2023e). Member States’ greenhouse gas (GHG) emission projections 2023. https://www.eea.europa.eu/en/datahub/datahubitem-view/4b8d94a4-aed7-4e67-a54c-0623a50f48e8
+    2030: 0.450 # 55% reduction by 2030 (Ff55)
+    2035: 0.250
+    2040: 0.100 # 90% by 2040
+    2045: 0.100
+    2050: 0.100 # like 2040
+
+waste_to_power:
+  industry:
+     waste_to_energy: true
+  sector:
+    municipal_solid_waste: true
+
+h2_nocogeneration:
+  sector:
+    use_fuel_cell_waste_heat: 0.0
+    use_electrolysis_waste_heat: 0.0
+
+chemical_reaction_nocogeneration:
+  sector:
+    use_fischer_tropsch_waste_heat: 0.0
+    use_haber_bosch_waste_heat: 0.0
+    use_methanolisation_waste_heat: 0.0
+    use_methanation_waste_heat: 0.0
+    use_fuel_cell_waste_heat: 0.0
+    use_electrolysis_waste_heat: 0.0
+
+agriculture_elec:
+  sector:
+    agriculture_machinery_electric_share: 1
+    agriculture_machinery_oil_share: 0
+    agriculture_machinery_fuel_efficiency: 0.7
+    agriculture_machinery_electric_efficiency: 0.7
+
+agriculture_oil:
+  sector:
+    agriculture_machinery_electric_share: 0
+    agriculture_machinery_oil_share: 1
+    agriculture_machinery_fuel_efficiency: 0.7
+    agriculture_machinery_electric_efficiency: 0.7
+
+electricity_high:
+  load:
+    fill_gaps:
+      enable: true
+      interpolate_limit: 3
+      time_shift_for_large_gaps: 1w
+    manual_adjustments: true
+    scaling_factor: 1.1
+    fixed_year: false
+    supplement_synthetic: true
+    distribution_key:
+      gdp: 0.6
+      population: 0.4
+
+super_methanol:
+  sector:
+    methanol:
+    regional_methanol_demand: true
+    methanol_reforming: true
+    methanol_reforming_cc: true
+    methanol_to_kerosene: true
+
+ev_use:
+  sector:
+    land_transport_electric_share:
+      2020: 0
+      2025: 0.05
+      2030: 0.2
+      2035: 0.45
+      2040: 0.7
+      2045: 0.70
+      2050: 0.70
+    land_transport_ice_share:
+      2020: 1
+      2025: 0.95
+      2030: 0.8
+      2035: 0.55
+      2040: 0.3
+      2045: 0.3
+      2050: 0.3
+
+shipping_methanol:
+  sector:
+    shipping_methanol_share:
+      2020: 0
+      2025: 0
+      2030: 0.15
+      2035: 0.35
+      2040: 0.50
+      2045: 0.50
+      2050: 0.50
+    shipping_oil_share:
+      2020: 1
+      2025: 1
+      2030: 0.85
+      2035: 0.65
+      2040: 0.50
+      2045: 0.50
+      2050: 0.50
+
+district_heating_medium:
+  sector:
+    district_heating_share:
+      2020: 0.1
+      2025: 0.2
+      2030: 0.35
+      2035: 0.5
+      2040: 0.5
+      2045: 0.5
+      2050: 0.5
+
+district_heating_low:
+  sector:
+    district_heating_share:
+      2020: 0.1
+      2025: 0.15
+      2030: 0.25
+      2035: 0.25
+      2040: 0.25
+      2045: 0.25
+      2050: 0.25

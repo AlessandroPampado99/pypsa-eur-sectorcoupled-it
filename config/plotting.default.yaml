@@ -110,6 +110,7 @@ plotting:
     - methanol
     - co2 stored
     - urban central heat
+    - urban decentral heat
     AC:
       unit: TWh
       unit_conversion: 1_000_000
@@ -175,6 +176,20 @@ plotting:
       - 5
       - 2
     urban central heat:
+      unit: TWh
+      unit_conversion: 1_000_000
+      cmap: Oranges
+      vmin:
+      vmax:
+      region_unit: €/MWh
+      bus_factor: 0.005
+      branch_factor: 0.1
+      flow_factor: 100
+      bus_sizes:
+      - 300
+      - 100
+      branch_sizes:
+    urban decentral heat:
       unit: TWh
       unit_conversion: 1_000_000
       cmap: Oranges

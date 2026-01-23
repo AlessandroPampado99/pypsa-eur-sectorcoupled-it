@@ -17,9 +17,9 @@ remote:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
   prefix: "validation_2019__"
-  name: all
+  name: europe_2019
   scenarios:
-    enable: true
+    enable: false
     file: config/sector-coupled-test/scenarios_validation.yaml
   disable_progressbar: false
   shared_resources:
@@ -951,8 +951,13 @@ costs:
 clustering:
   mode: administrative
   administrative:
-    level: 1
+    level: 0
     IT: 2
+    FR: 1
+    CH: 1
+    AT: 1
+    GR: 1
+    HR: 1
   focus_weights: false
   copperplate_regions: []
   build_bidding_zones:

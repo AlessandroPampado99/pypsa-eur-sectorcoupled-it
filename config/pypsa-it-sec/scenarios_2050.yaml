@@ -1,0 +1,84 @@
+# -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: Contributors to PyPSA-Eur <https://github.com/pypsa/pypsa-eur>
+#
+# SPDX-License-Identifier: MIT
+
+# This file is used to define the scenarios that are run by snakemake. Each entry on the first level is a scenario. Each scenario can contain configuration overrides with respect to the config/config.yaml settings.
+#
+# Example
+#
+# custom-scenario: # name of the scenario
+#   electricity:
+#       renewable_carriers: [wind, solar] # override the list of renewable carriers
+
+base:
+  clustering:
+    mode: administrative
+    administrative:
+      level: 0
+      IT: 2
+      FR: 1
+      CH: 1
+      AT: 1
+      GR: 1
+      HR: 1
+
+nuc:
+  electricity:
+    extendable_carriers:
+      Generator: [solar, solar-hsat, onwind, offwind-ac, offwind-dc, offwind-float, OCGT, CCGT, nuclear]
+      StorageUnit: [] # battery, H2
+      Store: [battery, H2]
+      Link: [] # H2 pipeline
+
+    powerplants_filter: (DateOut >= 2024 or DateOut != DateOut) and not (Country == 'Germany' and Fueltype == 'Nuclear')
+    custom_powerplants: false
+    everywhere_powerplants:
+      nuclear: ['IT']
+
+no-nze:
+  co2_budget:
+    2020: 0.720 # average emissions of 2019 to 2021 relative to 1990, CO2 excl LULUCF, EEA data, European Environment Agency. (2023a). Annual European Union greenhouse gas inventory 1990–2021 and inventory report 2023 - CRF Table. https://unfccc.int/documents/627830
+    2025: 0.648 # With additional measures (WAM) projection, CO2 excl LULUCF, European Environment Agency. (2023e). Member States’ greenhouse gas (GHG) emission projections 2023. https://www.eea.europa.eu/en/datahub/datahubitem-view/4b8d94a4-aed7-4e67-a54c-0623a50f48e8
+    2030: 0.450 # 55% reduction by 2030 (Ff55)
+    2035: 0.250
+    2040: 0.100 # 90% by 2040
+    2045: 0.100
+    2050: 0.100 # climate-neutral by 2050
+
+no-nze-h2:
+  co2_budget:
+    2020: 0.720 # average emissions of 2019 to 2021 relative to 1990, CO2 excl LULUCF, EEA data, European Environment Agency. (2023a). Annual European Union greenhouse gas inventory 1990–2021 and inventory report 2023 - CRF Table. https://unfccc.int/documents/627830
+    2025: 0.648 # With additional measures (WAM) projection, CO2 excl LULUCF, European Environment Agency. (2023e). Member States’ greenhouse gas (GHG) emission projections 2023. https://www.eea.europa.eu/en/datahub/datahubitem-view/4b8d94a4-aed7-4e67-a54c-0623a50f48e8
+    2030: 0.450 # 55% reduction by 2030 (Ff55)
+    2035: 0.250
+    2040: 0.100 # 90% by 2040
+    2045: 0.100
+    2050: 0.100 # climate-neutral by 2050
+
+  electricity:
+    extendable_carriers:
+      Generator: [solar, solar-hsat, onwind, offwind-ac, offwind-dc, offwind-float, OCGT, CCGT]
+      StorageUnit: [] # battery, H2
+      Store: [battery]
+      Link: [] # H2 pipeline
+
+no-nze-h2-nuc:
+  co2_budget:
+    2020: 0.720 # average emissions of 2019 to 2021 relative to 1990, CO2 excl LULUCF, EEA data, European Environment Agency. (2023a). Annual European Union greenhouse gas inventory 1990–2021 and inventory report 2023 - CRF Table. https://unfccc.int/documents/627830
+    2025: 0.648 # With additional measures (WAM) projection, CO2 excl LULUCF, European Environment Agency. (2023e). Member States’ greenhouse gas (GHG) emission projections 2023. https://www.eea.europa.eu/en/datahub/datahubitem-view/4b8d94a4-aed7-4e67-a54c-0623a50f48e8
+    2030: 0.450 # 55% reduction by 2030 (Ff55)
+    2035: 0.250
+    2040: 0.100 # 90% by 2040
+    2045: 0.150
+    2050: 0.100 # climate-neutral by 2050
+
+  electricity:
+    extendable_carriers:
+      Generator: [solar, solar-hsat, onwind, offwind-ac, offwind-dc, offwind-float, OCGT, CCGT, nuclear]
+      StorageUnit: [] # battery, H2
+      Store: [battery]
+      Link: [] # H2 pipeline
+
+    everywhere_powerplants:
+      nuclear: ['IT']

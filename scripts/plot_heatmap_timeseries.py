@@ -14,6 +14,11 @@ import pandas as pd
 import pypsa
 import seaborn as sns
 
+from pathlib import Path
+ROOT = Path(__file__).resolve().parents[1]  # points to /dati/pampado/pypsa-eur
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from scripts._helpers import configure_logging, get_snapshots, set_scenario_config
 
 logger = logging.getLogger(__name__)
@@ -92,10 +97,12 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "plot_heatmap_timeseries",
             simpl="",
-            clusters="10",
+            clusters="adm",
             opts="",
             sector_opts="",
-            planning_horizons=2050,
+            planning_horizons=2040,
+            configfiles=["results/first_simulation/base/configs/config.base_s_adm___2040.yaml"],
+            run="base"
         )
 
     configure_logging(snakemake)

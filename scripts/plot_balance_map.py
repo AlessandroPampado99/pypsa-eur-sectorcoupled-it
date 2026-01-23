@@ -44,9 +44,9 @@ if __name__ == "__main__":
             opts="",
             sector_opts="",
             planning_horizons="2040",
-            carrier="AC",
-            configfiles="config/pypsa-it-sec/config.yaml",
-            run="nze"
+            carrier="urban decentral heat",
+            configfiles="config/pypsa-it-sec/config_2040.yaml",
+            run="nuc"
         )
 
     configure_logging(snakemake)
