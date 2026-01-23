@@ -511,3 +511,11 @@ rule plot_base_statistics:
         + "figures/.statistics_plots_base_s_{clusters}_elec_{opts}",
     script:
         "../scripts/plot_statistics.py"
+
+rule analysis_technologies:
+    input:
+        network="{network}.nc"
+    output:
+        excel="{network}_analysis.xlsx"
+    script:
+        "/home/user8b8nt8/pypsa-eur-sectorcoupled-it/scripts/analysis_technologies.py"
