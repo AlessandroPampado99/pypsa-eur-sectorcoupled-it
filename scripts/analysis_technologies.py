@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 
-from pypsa.statistics import get_transmission_carriers
-from scripts.add_electricity import sanitize_carriers
 import pypsa
 import pandas as pd
+
+from pypsa.statistics import get_transmission_carriers
+from scripts.add_electricity import sanitize_carriers
+
 
 # =====================================================
 # LOAD NETWORK (Snakemake-native)
@@ -17,40 +19,16 @@ sanitize_carriers(n, snakemake.config)
 pypsa.options.params.statistics.nice_names = False
 pypsa.options.params.statistics.drop_zero = True
 
-print(
-    sorted(
-        n.statistics.energy_balance(
-            bus_carrier="AC",
-            groupby=["bus", "carrier"]
-        ).index.get_level_values("carrier").unique()
-    )
-)
-
 # tech_colors is used ONLY to filter technologies
 tech_colors = snakemake.config["plotting"]["tech_colors"]
+
 
 # =====================================================
 # FUNCTIONS – EXACT LOGIC FROM plot_balance_map.py
 # =====================================================
 
-from pypsa.statistics import get_transmission_carriers
-
-
 def get_supply_consumption_map(n, bus_carrier, tech_colors):
-    """
-    Replicates EXACTLY the supply/consumption logic of plot_balance_map.py
-    for a given bus carrier, but adapted to an already aggregated
-    energy_balance (no component level).
 
-    Returns
-    -------
-    supply_carriers : set
-    consumption_carriers : set
-    bus_sizes : pd.Series
-        Indexed by (bus, carrier), values are energy balances.
-    """
-
-    # --- energy balance (same call as plot_balance_map) ---
     eb = n.statistics.energy_balance(
         bus_carrier=bus_carrier,
         groupby=["bus", "carrier"]
@@ -59,18 +37,13 @@ def get_supply_consumption_map(n, bus_carrier, tech_colors):
     if eb.empty:
         return set(), set(), pd.Series(dtype=float)
 
-    # aggregate over buses (same as plot)
     bus_sizes = (
         eb
         .groupby(level=["bus", "carrier"])
         .sum()
     )
 
-    # =====================================================
-    # FILTERING (logical equivalent of plot_balance_map)
-    # =====================================================
-
-    # 1. Remove transmission carriers (lines, links, transformers)
+    # Remove transmission carriers
     transmission = get_transmission_carriers(
         n, bus_carrier=bus_carrier
     ).rename({"name": "carrier"})
@@ -81,22 +54,18 @@ def get_supply_consumption_map(n, bus_carrier, tech_colors):
         ~bus_sizes.index.get_level_values("carrier").isin(transmission_carriers)
     ]
 
-    # 2. Remove the bus carrier itself (AC, DC, co2, ...)
+    # Remove the bus carrier itself
     bus_sizes = bus_sizes[
         bus_sizes.index.get_level_values("carrier") != bus_carrier
     ]
 
-    # 3. Keep only technologies shown in balance maps
+    # Keep only technologies shown in balance maps
     bus_sizes = bus_sizes[
         bus_sizes.index.get_level_values("carrier").isin(tech_colors)
     ]
 
     if bus_sizes.empty:
         return set(), set(), bus_sizes
-
-    # =====================================================
-    # SUPPLY / CONSUMPTION CLASSIFICATION (exact logic)
-    # =====================================================
 
     pos_carriers = bus_sizes[bus_sizes > 0].index.unique("carrier")
     neg_carriers = bus_sizes[bus_sizes < 0].index.unique("carrier")
@@ -165,8 +134,9 @@ for group in bus_carriers:
 
 df = pd.DataFrame(records)
 
+
 # =====================================================
-# FINAL TABLES
+# FINALIZE (NO RANK / SHARE YET)
 # =====================================================
 
 def finalize(df):
@@ -191,10 +161,7 @@ def finalize(df):
         if total == 0:
             continue
 
-        g["rank"] = g.index + 1
-        g["share [%]"] = 100 * g.value / total
         g["group"] = group
-
         out.append(g)
 
     if not out:
@@ -202,11 +169,107 @@ def finalize(df):
             columns=["group", "rank", "technology", "value", "share [%]"]
         )
 
-    return pd.concat(out)[["group", "rank", "technology", "value", "share [%]"]]
+    df = pd.concat(out, ignore_index=True)
+    df["rank"] = None
+    df["share [%]"] = None
+
+    return df[["group", "rank", "technology", "value", "share [%]"]]
 
 
 supply = finalize(df[df.kind == "Supply"])
 consumption = finalize(df[df.kind == "Consumption"])
+
+
+# =====================================================
+# ADD "OTHERS" + RECOMPUTE RANK & SHARE
+# =====================================================
+
+def add_others_and_recompute_shares(supply, consumption, tol=1e-6):
+
+    supply = supply.copy()
+    consumption = consumption.copy()
+
+    groups = sorted(
+        set(supply.group.unique()) | set(consumption.group.unique())
+    )
+
+    # ---- add "others" to close balance ----
+    new_supply = []
+    new_consumption = []
+
+    for group in groups:
+
+        s = supply.loc[supply.group == group, "value"].sum()
+        c = consumption.loc[consumption.group == group, "value"].sum()
+
+        diff = s - c
+
+        if abs(diff) <= tol:
+            continue
+
+        if diff > 0:
+            new_consumption.append({
+                "group": group,
+                "technology": "others",
+                "value": diff,
+            })
+        else:
+            new_supply.append({
+                "group": group,
+                "technology": "others",
+                "value": -diff,
+            })
+
+    if new_supply:
+        supply = pd.concat(
+            [supply, pd.DataFrame(new_supply)],
+            ignore_index=True
+        )
+
+    if new_consumption:
+        consumption = pd.concat(
+            [consumption, pd.DataFrame(new_consumption)],
+            ignore_index=True
+        )
+
+    # ---- recompute rank and share including others ----
+    def recompute(df):
+
+        out = []
+
+        for group, g in df.groupby("group"):
+
+            g = (
+                g.sort_values("value", ascending=False)
+                .reset_index(drop=True)
+            )
+
+            total = g.value.sum()
+            if total == 0:
+                continue
+
+            g["rank"] = g.index + 1
+            g["share [%]"] = 100 * g.value / total
+            g["group"] = group
+
+            out.append(g)
+
+        if not out:
+            return pd.DataFrame(
+                columns=["group", "rank", "technology", "value", "share [%]"]
+            )
+
+        return pd.concat(out, ignore_index=True)[
+            ["group", "rank", "technology", "value", "share [%]"]
+        ]
+
+    return recompute(supply), recompute(consumption)
+
+
+supply, consumption = add_others_and_recompute_shares(
+    supply, consumption
+)
+
 
 # =====================================================
 # CONSISTENCY CHECK (Excel == balance maps)
@@ -218,10 +281,12 @@ def check_consistency(df, n, tech_colors, tol=1e-4):
 
     for group in df.group.unique():
 
-        # Excel total
-        excel_total = df.loc[df.group == group, "value"].sum()
+        # ⬅️ EXCLUDE "others" from Excel side
+        excel_total = df.loc[
+            (df.group == group) & (df.technology != "others"),
+            "value"
+        ].sum()
 
-        # Recompute balance-map logic
         supply_carriers, cons_carriers, bus_sizes = \
             get_supply_consumption_map(n, group, tech_colors)
 
@@ -230,17 +295,11 @@ def check_consistency(df, n, tech_colors, tol=1e-4):
 
         network_total = 0.0
 
-        # Supply part
         for tech in supply_carriers:
-            if tech not in bus_sizes.index.get_level_values("carrier"):
-                continue
             vals = bus_sizes.loc[:, tech]
             network_total += vals[vals > 0].sum()
 
-        # Consumption part
         for tech in cons_carriers:
-            if tech not in bus_sizes.index.get_level_values("carrier"):
-                continue
             vals = bus_sizes.loc[:, tech]
             network_total += (-vals[vals < 0]).sum()
 
@@ -258,12 +317,12 @@ def check_consistency(df, n, tech_colors, tol=1e-4):
 
     print("✔ Balance-map consistency check passed")
 
-
 check_consistency(
     pd.concat([supply, consumption], ignore_index=True),
     n,
     tech_colors
 )
+
 
 # =====================================================
 # WRITE EXCEL
