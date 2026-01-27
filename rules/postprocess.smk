@@ -511,3 +511,39 @@ rule plot_base_statistics:
         + "figures/.statistics_plots_base_s_{clusters}_elec_{opts}",
     script:
         "../scripts/plot_statistics.py"
+
+def find_network_nc(wildcards):
+    import glob
+
+    pattern = f"results/**/networks/{wildcards.network}.nc"
+    matches = glob.glob(pattern, recursive=True)
+
+    if len(matches) == 0:
+        raise FileNotFoundError(
+            f"No network found for {wildcards.network}"
+        )
+
+    if len(matches) > 1:
+        raise ValueError(
+            f"Multiple networks found for {wildcards.network}:\n"
+            + "\n".join(matches)
+        )
+
+    return matches[0]
+
+rule analysis_technologies:
+    input:
+        network=find_network_nc
+    output:
+        excel="results/{network}_analysis.xlsx"
+    script:
+        "/home/user8b8nt8/pypsa-eur-sectorcoupled-it/scripts/analysis_technologies.py"
+
+rule compare_analysis_technologies:
+    input:
+        excel1="results/{network1}_analysis.xlsx",
+        excel2="results/{network2}_analysis.xlsx"
+    output:
+        excel="results/comp_{network1}_VS_{network2}.xlsx"
+    script:
+        "/home/user8b8nt8/pypsa-eur-sectorcoupled-it/scripts/compare_analysis_technologies.py"
