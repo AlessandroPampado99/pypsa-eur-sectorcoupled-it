@@ -1,118 +1,121 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+from __future__ import annotations
 
 import pandas as pd
+import numpy as np
 
 
-# =====================================================
-# INPUT
-# =====================================================
-
-excel1 = snakemake.input.excel1
-excel2 = snakemake.input.excel2
-
-output = snakemake.output.excel
-
-name1 = excel1.split("/")[-1].replace("_analysis.xlsx", "")
-name2 = excel2.split("/")[-1].replace("_analysis.xlsx", "")
+REQUIRED_COLS = ["scenario", "kind", "group", "rank", "technology", "value", "share [%]"]
 
 
-# =====================================================
-# LOAD DATA
-# =====================================================
+def _load_all(parquets: list[str]) -> pd.DataFrame:
+    dfs = [pd.read_parquet(p) for p in parquets]
+    df = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame(columns=REQUIRED_COLS)
 
-supply_1 = pd.read_excel(excel1, sheet_name="Supply")
-cons_1   = pd.read_excel(excel1, sheet_name="Consumption")
+    missing = [c for c in REQUIRED_COLS if c not in df.columns]
+    if missing:
+        raise ValueError(f"Missing columns in concatenated parquet: {missing}")
 
-supply_2 = pd.read_excel(excel2, sheet_name="Supply")
-cons_2   = pd.read_excel(excel2, sheet_name="Consumption")
+    # sanitize dtypes
+    df["scenario"] = df["scenario"].astype(str)
+    df["kind"] = df["kind"].astype(str)
+    df["group"] = df["group"].astype(str)
+    df["technology"] = df["technology"].astype(str)
+    df["rank"] = pd.to_numeric(df["rank"], errors="coerce")
+    df["value"] = pd.to_numeric(df["value"], errors="coerce").fillna(0.0)
+    df["share [%]"] = pd.to_numeric(df["share [%]"], errors="coerce").fillna(0.0)
 
-
-# =====================================================
-# GENERIC COMPARISON FUNCTION
-# =====================================================
-
-def compare(df1, df2):
-
-    df1 = df1.copy()
-    df2 = df2.copy()
-
-    df1 = df1.rename(columns={
-        "rank": "rank_1",
-        "value": "value_1",
-        "share [%]": "share_1"
-    })
-
-    df2 = df2.rename(columns={
-        "rank": "rank_2",
-        "value": "value_2",
-        "share [%]": "share_2"
-    })
-
-    # Merge on group + technology
-    merged = pd.merge(
-        df1,
-        df2,
-        on=["group", "technology"],
-        how="outer"
-    )
-
-    # Fill NaNs with 0 for values and shares
-    for col in ["value_1", "value_2", "share_1", "share_2"]:
-        merged[col] = merged[col].fillna(0.0)
-
-    # Rank stays NaN if missing
-    merged["rank_1"] = merged["rank_1"]
-    merged["rank_2"] = merged["rank_2"]
-
-    # Relative differences
-    merged["rel_diff_value"] = (
-        (merged["value_2"] - merged["value_1"]) / merged["value_2"]
-    )
-
-    merged["rel_diff_share"] = (
-        (merged["share_2"] - merged["share_1"]) / merged["share_2"]
-    )
-
-    # Clean infinities (division by zero)
-    merged.replace([float("inf"), -float("inf")], pd.NA, inplace=True)
-
-    # Order columns
-    merged = merged[[
-        "group",
-        "technology",
-        "rank_1",
-        "rank_2",
-        "value_1",
-        "value_2",
-        "share_1",
-        "share_2",
-        "rel_diff_value",
-        "rel_diff_share",
-    ]]
-
-    # Sort nicely
-    merged = merged.sort_values(
-        ["group", "value_2"],
-        ascending=[True, False]
-    )
-
-    return merged
+    return df
 
 
-# =====================================================
-# BUILD COMPARISON TABLES
-# =====================================================
+def _levels_wide(df: pd.DataFrame, kind: str) -> pd.DataFrame:
+    d = df[df["kind"] == kind].copy()
 
-supply_comp = compare(supply_1, supply_2)
-cons_comp   = compare(cons_1, cons_2)
+    if d.empty:
+        return pd.DataFrame(columns=["group", "technology"])
+
+    # pivot value/share/rank to wide
+    base_idx = ["group", "technology"]
+
+    wide_value = d.pivot_table(index=base_idx, columns="scenario", values="value", aggfunc="sum", fill_value=0.0)
+    wide_share = d.pivot_table(index=base_idx, columns="scenario", values="share [%]", aggfunc="sum", fill_value=0.0)
+    wide_rank  = d.pivot_table(index=base_idx, columns="scenario", values="rank", aggfunc="min")
+
+    # flatten column names
+    wide_value.columns = [f"value__{c}" for c in wide_value.columns]
+    wide_share.columns = [f"share__{c}" for c in wide_share.columns]
+    wide_rank.columns  = [f"rank__{c}" for c in wide_rank.columns]
+
+    out = pd.concat([wide_rank, wide_value, wide_share], axis=1).reset_index()
+
+    # sort by max value across scenarios
+    vcols = [c for c in out.columns if c.startswith("value__")]
+    out["_max_value"] = out[vcols].max(axis=1) if vcols else 0.0
+    out = out.sort_values(["group", "_max_value"], ascending=[True, False]).drop(columns=["_max_value"])
+
+    return out
 
 
-# =====================================================
-# WRITE EXCEL
-# =====================================================
+def _delta_vs_base(levels: pd.DataFrame, base: str) -> pd.DataFrame:
+    out = levels.copy()
+    eps = 1e-12
 
-with pd.ExcelWriter(output, engine="openpyxl") as writer:
-    supply_comp.to_excel(writer, sheet_name="Supply", index=False)
-    cons_comp.to_excel(writer, sheet_name="Consumption", index=False)
+    base_v = f"value__{base}"
+    base_s = f"share__{base}"
 
-print(f"✔ Comparison written to {output}")
+    if base_v not in out.columns or base_s not in out.columns:
+        raise ValueError(
+            f"Base scenario '{base}' not present. "
+            f"Have value cols: {[c for c in out.columns if c.startswith('value__')]}"
+        )
+
+    scenarios = sorted({c.split("__", 1)[1] for c in out.columns if c.startswith("value__")})
+
+    for sc in scenarios:
+        v = f"value__{sc}"
+        s = f"share__{sc}"
+
+        out[f"delta_value__{sc}"] = out[v] - out[base_v]
+        out[f"delta_share__{sc}"] = out[s] - out[base_s]
+
+        denom_v = np.maximum(np.abs(out[base_v].to_numpy()), eps)
+        denom_s = np.maximum(np.abs(out[base_s].to_numpy()), eps)
+
+        out[f"relchg_value__{sc}"] = (out[v] - out[base_v]) / denom_v
+        out[f"relchg_share__{sc}"] = (out[s] - out[base_s]) / denom_s
+
+    # compact column order
+    front = ["group", "technology", base_v, base_s]
+    delta_cols = [c for c in out.columns if c.startswith("delta_")]
+    rel_cols = [c for c in out.columns if c.startswith("relchg_")]
+
+    keep = [c for c in front + delta_cols + rel_cols if c in out.columns]
+    return out[keep]
+
+
+def main():
+    parquets = list(snakemake.input.parquets)
+    output = snakemake.output.excel
+    base = snakemake.params["base_scenario"] 
+
+    df = _load_all(parquets)
+
+    supply_levels = _levels_wide(df, "Supply")
+    cons_levels   = _levels_wide(df, "Consumption")
+
+    supply_delta = _delta_vs_base(supply_levels, base)
+    cons_delta   = _delta_vs_base(cons_levels, base)
+
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        supply_levels.to_excel(writer, sheet_name="Supply_levels", index=False)
+        cons_levels.to_excel(writer, sheet_name="Consumption_levels", index=False)
+        supply_delta.to_excel(writer, sheet_name="Supply_vs_base", index=False)
+        cons_delta.to_excel(writer, sheet_name="Consumption_vs_base", index=False)
+
+    print(f"✔ Wrote single consolidated Excel to {output}")
+    print(f"✔ Base scenario: {base}")
+
+
+main()

@@ -60,6 +60,14 @@ import pypsa
 import xarray as xr
 from pypsa.clustering.spatial import DEFAULT_ONE_PORT_STRATEGIES, normed_or_uniform
 
+# Per fare debug su VSCode
+# Ensure repo root on sys.path
+import sys
+from pathlib import Path
+ROOT = Path(__file__).resolve().parents[1]  # points to /dati/pampado/pypsa-eur
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from scripts._helpers import (
     PYPSA_V1,
     configure_logging,

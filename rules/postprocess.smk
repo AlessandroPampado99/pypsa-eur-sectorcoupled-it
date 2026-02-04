@@ -530,20 +530,3 @@ def find_network_nc(wildcards):
         )
 
     return matches[0]
-
-rule analysis_technologies:
-    input:
-        network=find_network_nc
-    output:
-        excel="results/{network}_analysis.xlsx"
-    script:
-        "/home/user8b8nt8/pypsa-eur-sectorcoupled-it/scripts/analysis_technologies.py"
-
-rule compare_analysis_technologies:
-    input:
-        excel1="results/{network1}_analysis.xlsx",
-        excel2="results/{network2}_analysis.xlsx"
-    output:
-        excel="results/comp_{network1}_VS_{network2}.xlsx"
-    script:
-        "/home/user8b8nt8/pypsa-eur-sectorcoupled-it/scripts/compare_analysis_technologies.py"

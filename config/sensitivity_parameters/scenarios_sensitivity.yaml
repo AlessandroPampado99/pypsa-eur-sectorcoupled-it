@@ -72,10 +72,10 @@ electricity_high:
 super_methanol:
   sector:
     methanol:
-    regional_methanol_demand: true
-    methanol_reforming: true
-    methanol_reforming_cc: true
-    methanol_to_kerosene: true
+      regional_methanol_demand: true
+      methanol_reforming: true
+      methanol_reforming_cc: true
+      methanol_to_kerosene: true
 
 ev_use:
   sector:
@@ -136,3 +136,4 @@ district_heating_low:
       2040: 0.25
       2045: 0.25
       2050: 0.25
+

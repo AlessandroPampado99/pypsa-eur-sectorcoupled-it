@@ -325,11 +325,31 @@ check_consistency(
 
 
 # =====================================================
-# WRITE EXCEL
+# WRITE PARQUET (LONG FORMAT, ONE FILE PER NETWORK)
 # =====================================================
 
-with pd.ExcelWriter(snakemake.output.excel, engine="openpyxl") as writer:
-    supply.to_excel(writer, sheet_name="Supply", index=False)
-    consumption.to_excel(writer, sheet_name="Consumption", index=False)
+out_rows = []
 
-print(f"✔ Analysis written to {snakemake.output.excel}")
+for kind, df_kind in [("Supply", supply), ("Consumption", consumption)]:
+    if df_kind.empty:
+        continue
+    tmp = df_kind.copy()
+    tmp["kind"] = kind
+    out_rows.append(tmp)
+
+out = pd.concat(out_rows, ignore_index=True) if out_rows else pd.DataFrame(
+    columns=["group", "rank", "technology", "value", "share [%]", "kind"]
+)
+
+# IMPORTANT: make scenario unique across subfolders
+scenario = getattr(snakemake.wildcards, "scenario", None)
+if scenario is None:
+    scenario = "__BASE__"
+out["scenario"] = scenario
+
+
+out = out[["scenario", "kind", "group", "rank", "technology", "value", "share [%]"]]
+out.to_parquet(snakemake.output.parquet, index=False)
+
+print(f"✔ Analysis written to {snakemake.output.parquet}")
+
