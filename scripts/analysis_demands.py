@@ -43,7 +43,7 @@ import pypsa
 PREFIX_DIR = Path("results/sensitivity_2050")
 
 # Choose the base network explicitly (can be anywhere)
-BASE_NETWORK_PATH = Path("results/simulation_2050/nuc/networks/base_s_adm___2050.nc")
+BASE_NETWORK_PATH = Path("results/simulation_2050/base_new/networks/base_s_adm___2050.nc")
 BASE_NAME = "__BASE__"  # column name for base in outputs
 
 # If each scenario has multiple .nc in networks/, constrain which one to pick.

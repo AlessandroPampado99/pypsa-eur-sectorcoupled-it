@@ -17,9 +17,9 @@ remote:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
   prefix: "sensitivity_2050"
-  name: all
+  name: dynamic_line_rating
   scenarios:
-    enable: true
+    enable: false
     file: config/sensitivity_parameters/scenarios_sensitivity.yaml
   disable_progressbar: false
   shared_resources:
@@ -332,7 +332,7 @@ lines:
   reconnect_crimea: true
   under_construction: keep # 'zero': set capacity to zero, 'remove': remove, 'keep': with full capacity for lines in grid extract
   dynamic_line_rating:
-    activate: false
+    activate: true
     cutout: default
     correction_factor: 0.95
     max_voltage_difference: false

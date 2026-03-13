@@ -45,7 +45,7 @@ ROOT_DIR = Path("results/sensitivity_2050")
 NETWORK_GLOB = "networks/*.nc"
 
 # Base network path (can be anywhere)
-BASE_NETWORK_PATH = Path("results/simulation_2050/nuc/networks/base_s_adm___2050.nc")
+BASE_NETWORK_PATH = Path("results/simulation_2050/base_new/networks/base_s_adm___2050.nc")
 
 # Output Excel (single file)
 OUTPUT_EXCEL = Path("results/sensitivity_2050/csvs/analysis_networks_vs_base.xlsx")

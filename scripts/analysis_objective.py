@@ -47,7 +47,7 @@ import pypsa
 PREFIX_DIR = Path("results/sensitivity_2050")
 
 # Base network path (explicit, can be anywhere)
-BASE_NETWORK_PATH = Path("results/simulation_2050/nuc/networks/base_s_adm___2050.nc")
+BASE_NETWORK_PATH = Path("results/simulation_2050/base_new/networks/base_s_adm___2050.nc")
 BASE_NAME = "__BASE__"
 
 # Optional: choose exactly which network file inside each scenario networks/ folder.

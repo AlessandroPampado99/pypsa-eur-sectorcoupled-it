@@ -17,7 +17,7 @@ remote:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
   prefix: "simulation_2050"
-  name: all
+  name: base
   scenarios:
     enable: true
     file: config/pypsa-it-sec/scenarios_2050.yaml
