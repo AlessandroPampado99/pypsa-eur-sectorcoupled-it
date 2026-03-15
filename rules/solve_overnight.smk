@@ -2,6 +2,16 @@
 #
 # SPDX-License-Identifier: MIT
 
+rule impose_base_scenario:
+    input:
+        network="networks/base_s_{clusters}_{opts}_{sector_opts}_{planning_horizons}.nc"
+    output:
+        network="networks/base_s_{clusters}_{opts}_{sector_opts}_{planning_horizons}_{scenariobase}.nc"
+    params:
+        scenariobase=config["scenario"]["scenariobase"],
+        scenario_params=config["scenario_base_parameters"]
+    script:
+        "../scripts/impose_base_scenario.py"
 
 rule solve_sector_network:
     params:
@@ -13,7 +23,7 @@ rule solve_sector_network:
         custom_extra_functionality=input_custom_extra_functionality,
     input:
         network=resources(
-            "networks/base_s_{clusters}_{opts}_{sector_opts}_{planning_horizons}.nc"
+            "networks/base_s_{clusters}_{opts}_{sector_opts}_{planning_horizons}_{scenariobase}.nc"
         ),
     output:
         network=RESULTS
