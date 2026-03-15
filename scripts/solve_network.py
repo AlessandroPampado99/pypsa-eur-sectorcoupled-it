@@ -1171,6 +1171,116 @@ def add_co2_atmosphere_constraint(n, snapshots):
 
             n.model.add_constraints(lhs <= rhs, name=f"GlobalConstraint-{name}")
 
+def add_energy_constraint(n, snapshots, links, target, name):
+
+    if len(links) == 0:
+        return
+
+    weights = n.snapshot_weightings.objective
+
+    p = n.model["Link-p"].loc[snapshots, links]
+
+    energy = (p * weights.loc[snapshots]).sum()
+
+    n.model.add_constraints(
+        energy == target,
+        name=name
+    )
+
+def apply_energy_constraints(n, snapshots):
+
+    energy_constraints = n.meta.get("energy_constraints", {})
+    country = n.meta.get("country")
+
+    if not energy_constraints or country is None:
+        return
+
+    bus_country = n.buses.country
+
+
+    # ---------------- ELECTRICITY EXCHANGE ----------------
+    for country_out, target in energy_constraints.get("electricity_exchange", {}).items():
+
+        links = n.links[
+            (n.links.bus0.map(bus_country) == country_out) &
+            (n.links.bus1.map(bus_country) == country)
+        ].index
+
+        links_rev = n.links[
+            (n.links.bus0.map(bus_country) == country) &
+            (n.links.bus1.map(bus_country) == country_out)
+        ].index
+
+        interconnectors = list(links) + list(links_rev)
+
+        add_energy_constraint(
+            n,
+            snapshots,
+            interconnectors,
+            target,
+            f"total_exchange_{country_out}_{country}"
+        )
+
+
+    # ---------------- GAS ----------------
+    gas_config = {
+        "internalproduction": {
+            "bus_carrier": "gas",
+            "link_filter": lambda n, buses: n.links[n.links.bus1.isin(buses)].index
+        },
+        "biomethane": {
+            "bus_carrier": "biogas to gas",
+            "link_filter": lambda n, buses: n.links[n.links.bus1.isin(buses)].index
+        },
+        "import": {
+            "bus_carrier": "gas",
+            "link_filter": lambda n, buses: n.links[
+                (n.links.carrier.isin(["gas pipeline","gas pipeline new"])) &
+                (n.links.bus1.isin(buses))
+            ].index
+        }
+    }
+
+    for constraint, target in energy_constraints.get("gas", {}).items():
+
+        if constraint not in gas_config:
+            continue
+
+        config = gas_config[constraint]
+
+        buses = n.buses[
+            (n.buses.carrier == config["bus_carrier"]) &
+            (bus_country == country)
+        ].index
+
+        links = config["link_filter"](n, buses)
+
+        add_energy_constraint(
+            n,
+            snapshots,
+            links,
+            target,
+            f"{constraint}_gas_{country}"
+        )
+
+
+    # ---------------- H2 ----------------
+    if "electricityconsumption" in energy_constraints.get("hydrogen", {}):
+
+        target = energy_constraints["hydrogen"]["electricityconsumption"]
+
+        links = n.links[
+            (n.links.carrier == "H2 Electrolysis") &
+            (n.links.bus0.map(bus_country) == country)
+        ].index
+
+        add_energy_constraint(
+            n,
+            snapshots,
+            links,
+            target,
+            f"H2_electricity_consumption_{country}"
+        )
 
 def extra_functionality(
     n: pypsa.Network, snapshots: pd.DatetimeIndex, planning_horizons: str | None = None
@@ -1251,6 +1361,7 @@ def extra_functionality(
         custom_extra_functionality = getattr(module, module_name)
         custom_extra_functionality(n, snapshots, snakemake)  # pylint: disable=E0601
 
+    apply_energy_constraints(n, snapshots)
 
 def check_objective_value(n: pypsa.Network, solving: dict) -> None:
     """
